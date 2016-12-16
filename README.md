@@ -11,7 +11,9 @@ https://fierydragon12.github.io/
 - input field and add-button
 - option adding new item to the list
 - option removing existing item from the list
-- must be used native JS + DOM
+- must be used jQuery + DOM
+- must be used Twitter Bootstrap for markup and validation
+- must be used localStorage for data keeping
 
 #Verification criteria:
 - component works from the first attempt
