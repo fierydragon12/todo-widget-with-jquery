@@ -1,72 +1,60 @@
 (function( window ) {
 
- // require widget css
-    $('head').append($("<link/>", {
-        rel: "stylesheet",
-        href: "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css", 
-        crossorigin: "anonymous" 
-    }));
-    $('head').append($("<link/>", {
-        rel: "stylesheet",
-        href: "todowidget/css/styles.css"
-    }));
-
-// create widget constructor
-    function TodoWidget(title, container) {	
-    // initialize widget
+    function TodoWidget(title, container) {
         var widget = this;
-        widget.container = $(container);
-        widget.storageName = container.replace('.', '').replace('#', '');
-        widget.wigetTpl = $.parseHTML(widget.tpl.wigetTpl(title));
-        widget.newTask = $(widget.wigetTpl).find(widget.helpers.WIDGET_SELECTORS.ADD_INPUT_TASK_SELECTOR);
-        widget.addTask = $(widget.wigetTpl).find(widget.helpers.WIDGET_SELECTORS.ADD_BUTTON_TASK_SELECTOR);
-        widget.taskList = $(widget.wigetTpl).find(widget.helpers.WIDGET_SELECTORS.LIST_TASKS_SELECTOR);
-        widget.showEmplty = $(widget.wigetTpl).find(widget.helpers.WIDGET_SELECTORS.SHOW_EMPTY_SELECTOR);
-
-        widget.init = function(){
-            widget.storageInit();
-            widget.container.append(widget.wigetTpl);
-            widget.newTask.on("focus keydown", widget.handleFocusInput);
-            widget.newTask.on("keyup", widget.handleAddTask);
-            widget.addTask.on("click", widget.handleAddTask);
-            widget.taskList.find(widget.helpers.WIDGET_SELECTORS.REMOVE_TASKS_SELECTOR).on("click", widget.handleRemoveTask);
-         };
+            widget._container = $(container);
+            widget._storageName = container.replace('.', '').replace('#', '');
+            widget._tpl = $.parseHTML(widget.tpl.main(title));
+            widget._newTask = $(widget._tpl).find(widget.helpers.WIDGET_SELECTORS.ADD_INPUT_TASK_SELECTOR);
+            widget._addTask = $(widget._tpl).find(widget.helpers.WIDGET_SELECTORS.ADD_BUTTON_TASK_SELECTOR);
+            widget._taskList = $(widget._tpl).find(widget.helpers.WIDGET_SELECTORS.LIST_TASKS_SELECTOR);
+            widget._showHasError = $(widget._tpl).find(widget.helpers.WIDGET_SELECTORS.SHOW_HAS_ERROR_SELECTOR);
 
      // add task methods
-        widget.handleAddTask = function(e) {
-            if ($(this).prop("tagName").toLowerCase() === widget.helpers.WIDGET_SELECTORS.ADD_INPUT_TASK_SELECTOR && e.keyCode !== 13) {                
+        widget._onClickAndKeyupAddTask = function(e) {
+            if ($(e.target).prop("tagName").toLowerCase() === widget.helpers.WIDGET_SELECTORS.ADD_INPUT_TASK_SELECTOR && e.keyCode !== 13) {
                 return;
             }
 
-            var task_desc = widget.newTask.val();
+            var task_desc = widget._newTask.val();
             if (task_desc.length === 0) {
-                widget.handleShowEmpty(widget.helpers.HAS_ERROR_CLASS.ADD);
+                widget._manageHasErrorClass(widget.helpers.HAS_ERROR_CLASS.ADD);
                 return;
             } else {
-                widget.handleShowEmpty(widget.helpers.HAS_ERROR_CLASS.REMOVE);                
-                widget.taskList.append($.parseHTML(widget.tpl.todoTpl(task_desc)));                
-                widget.newTask.val('');
-                widget.taskList.find(widget.helpers.WIDGET_SELECTORS.LAST_TASK_SELECTOR).attr("data-id", widget.storageAddTodo(task_desc));
-                widget.taskList.find(widget.helpers.WIDGET_SELECTORS.REMOVE_TASK_SELECTOR).on("click", widget.handleRemoveTask);               
+                widget._manageHasErrorClass(widget.helpers.HAS_ERROR_CLASS.REMOVE);
+                widget._taskList.append($.parseHTML(widget.tpl.todo(task_desc)));
+                widget._newTask.val('');
+                widget._taskList.find(widget.helpers.WIDGET_SELECTORS.LAST_TASK_SELECTOR).attr("data-id", widget.storageAddTodo(task_desc));
+                widget._taskList.find(widget.helpers.WIDGET_SELECTORS.REMOVE_TASK_SELECTOR).on("click", widget._onClickRemoveTask);
             }
         };
      // remove task methods
-        widget.handleRemoveTask = function() {            
-            widget.storageRemoveTodo($(this).parent().attr("data-id"));
-            $(this).parent().remove();
+        widget._onClickRemoveTask = function(e) {
+            var el = (e.target.parentNode.className === widget.helpers.WIDGET_SELECTORS.CURRENT_TASK_CLASS) ? e.target.parentNode : e.target.parentNode.parentNode;
+            widget.storageRemoveTodo($(el).attr("data-id"));
+            $(el).find(widget.helpers.WIDGET_SELECTORS.REMOVE_TASKS_SELECTOR).off("click", widget._onClickRemoveTask);
+            $(el).remove();
         };
      // set has-error class      
-        widget.handleFocusInput = function() {
-            widget.handleShowEmpty(widget.helpers.HAS_ERROR_CLASS.REMOVE);
+        widget._onFocusInput = function() {
+            widget._manageHasErrorClass(widget.helpers.HAS_ERROR_CLASS.REMOVE);
         };
      // manage has-error class
-        widget.handleShowEmpty = function(flag) {
+        widget._manageHasErrorClass = function(flag) {
             if (flag === widget.helpers.HAS_ERROR_CLASS.ADD) {
-                widget.showEmplty.addClass("has-error");
+                widget._showHasError.addClass("has-error");
             } else {
-                widget.showEmplty.removeClass("has-error");
+                widget._showHasError.removeClass("has-error");
             }
         };
+
+     // initialize widget
+        widget.storageInit();
+        widget._container.append(widget._tpl);
+        widget._newTask.on("focus keydown", widget._onFocusInput);
+        widget._newTask.on("keyup", widget._onClickAndKeyupAddTask);
+        widget._addTask.on("click", widget._onClickAndKeyupAddTask);
+        widget._taskList.find(widget.helpers.WIDGET_SELECTORS.REMOVE_TASKS_SELECTOR).on("click", widget._onClickRemoveTask);
     }
 
     TodoWidget.prototype.helpers = {
@@ -78,7 +66,8 @@
             LAST_TASK_SELECTOR: 'li:last-child',
             REMOVE_TASK_SELECTOR: 'li:last-child .remove-task',        
             REMOVE_TASKS_SELECTOR: '.remove-task',
-            SHOW_EMPTY_SELECTOR: '.form-group',
+            SHOW_HAS_ERROR_SELECTOR: '.form-group',
+            CURRENT_TASK_CLASS: 'todo-task'
         },
      // msg-error-class actions
         HAS_ERROR_CLASS: {
@@ -89,7 +78,7 @@
     
     TodoWidget.prototype.tpl = {
      // functions for creating widget templates
-        wigetTpl: function(title) {
+        main: function(title) {
             return [
                 '<div class="container">',
                 '<div class="row">',
@@ -115,7 +104,7 @@
                 '</div>',
             ].join('');
         },
-        todoTpl: function(desc) {
+        todo: function(desc) {
             return [
                 '<li class="todo-task">',
                 '<span class="todo-desc">' + desc + '</span>',
@@ -129,28 +118,28 @@
 
  // methods for work with localStorage
     TodoWidget.prototype.storageInit = function() {
-        if (localStorage.getItem(this.storageName) === null) {
-            localStorage.setItem(this.storageName, JSON.stringify({}));
+        if (localStorage.getItem(this._storageName) === null) {
+            localStorage.setItem(this._storageName, JSON.stringify({}));
         } else {
             var widget = this;
-            $.each( JSON.parse(localStorage.getItem(widget.storageName)), function( key, value ) {
-                widget.taskList.append($.parseHTML(widget.tpl.todoTpl(value)));
-                widget.taskList.find(widget.helpers.WIDGET_SELECTORS.LAST_TASK_SELECTOR).attr("data-id", key);
+            $.each( JSON.parse(localStorage.getItem(widget._storageName)), function( key, value ) {
+                widget._taskList.append($.parseHTML(widget.tpl.todo(value)));
+                widget._taskList.find(widget.helpers.WIDGET_SELECTORS.LAST_TASK_SELECTOR).attr("data-id", key);
             });
         }
     };
     TodoWidget.prototype.storageAddTodo = function(todo) {
-        var todos = JSON.parse(localStorage.getItem(this.storageName)),
+        var todos = JSON.parse(localStorage.getItem(this._storageName)),
             todosKeys = Object.keys(todos);
             newKey = (todosKeys.length === 0) ? 0 : Math.max.apply(Math, todosKeys) + 1;
-        localStorage.setItem(this.storageName, JSON.stringify( Object.assign(todos, {[newKey] : todo })));
+        localStorage.setItem(this._storageName, JSON.stringify( Object.assign(todos, {[newKey] : todo })));
 
         return newKey;
     };
     TodoWidget.prototype.storageRemoveTodo = function(todo) {
-        var todos = JSON.parse(localStorage.getItem(this.storageName));
+        var todos = JSON.parse(localStorage.getItem(this._storageName));
         delete todos[todo];
-        localStorage.setItem(this.storageName, JSON.stringify(todos));
+        localStorage.setItem(this._storageName, JSON.stringify(todos));
     }; 
 
 
